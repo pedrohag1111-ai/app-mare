@@ -1,0 +1,20 @@
+{
+  "short_name": "Marés",
+  "name": "App Monitor de Marés",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192/1e293b/38bdf8?text=Mar%C3%A9",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://via.placeholder.com/512/1e293b/38bdf8?text=Mar%C3%A9",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0f172a",
+  "theme_color": "#1a202c",
+  "display": "standalone"
+}
