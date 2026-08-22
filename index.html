@@ -672,5 +672,56 @@ document.getElementById("app").addEventListener("change", (e) => {
 /* ---------- boot ---------- */
 loadAll();
 </script>
+  <!-- Botão de Notificação -->
+<div style="text-align: center; margin: 20px 0;">
+  <button id="btnLembrete" onclick="ativarLembrete()" style="padding: 12px 20px; border-radius: 12px; background: #2E2440; color: #FFF; border: none; font-weight: bold; cursor: pointer;">
+    🔔 Ativar Notificações
+  </button>
+  <p id="statusText" style="font-size: 12px; color: #706878; margin-top: 5px;">Lembretes desativados</p>
+</div>
+
+<script>
+  let swRegistration = null;
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const swCode = `self.addEventListener('notificationclick', function(event) { event.notification.close(); event.waitUntil(clients.openWindow('/')); });`;
+        const blob = new Blob([swCode], { type: 'application/javascript' });
+        swRegistration = await navigator.serviceWorker.register(URL.createObjectURL(blob));
+        verificarPermissao();
+      } catch (err) { console.error("Erro no Service Worker:", err); }
+    });
+  }
+
+  function verificarPermissao() {
+    const statusText = document.getElementById('statusText');
+    const btn = document.getElementById('btnLembrete');
+    if (!statusText || !btn || !('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      statusText.innerText = '✅ Lembretes ativos!';
+      btn.innerText = '🧪 Testar Notificação Agora';
+    }
+  }
+
+  async function ativarLembrete() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') {
+      const permissao = await Notification.requestPermission();
+      if (permissao === 'granted') {
+        verificarPermissao();
+        enviarNotificacao("Lembrete Ativado!", "Você receberá avisos da maré.");
+      }
+    } else {
+      enviarNotificacao("Alerta de Maré 🌊", "A maré alta está prevista para daqui a pouco!");
+    }
+  }
+
+  function enviarNotificacao(titulo, corpo) {
+    if (swRegistration && Notification.permission === 'granted') {
+      swRegistration.showNotification(titulo, { body: corpo, icon: 'logo.png', badge: 'logo.png', vibrate: [200, 100, 200] });
+    }
+  }
+</script>
+
 </body>
 </html>
