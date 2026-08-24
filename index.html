@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Maré — diário de identidade de gênero</title>
 
-<!-- Configurações PWA (Instalação no Celular) -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#FAF6F1">
 <meta name="mobile-web-app-capable" content="yes">
@@ -32,25 +31,22 @@
 
   header .top-row { display: flex; align-items: center; gap: 12px; }
   
-  /* LOGO 3D ORGÂNICA RECRIADA PERFEITAMENTE EM CSS */
   .app-icon { 
-    width: 36px; 
-    height: 36px; 
-    border-radius: 60% 40% 55% 45% / 55% 45% 60% 40%; 
+    width: 42px; 
+    height: 42px; 
     flex-shrink: 0; 
-    background: linear-gradient(135deg, #FFFFFF 0%, #E2CBE8 35%, #9E7BB5 70%, #4A3E56 100%);
-    box-shadow: 
-      inset 2px 2px 4px rgba(255, 255, 255, 0.9),
-      inset -2px -3px 6px rgba(40, 30, 50, 0.6),
-      0 4px 10px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app-icon svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
   }
 
   header h1 { font-size: 24px; line-height: 1; margin: 0; }
   header .subtitle { font-size: 12px; margin: 4px 0 0; }
-
-  .ribbon { display: flex; align-items: flex-end; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-top: 20px; }
-  .ribbon-dot { width: 16px; height: 16px; border-radius: 999px; flex: 0 0 auto; cursor: pointer; transition: transform .2s ease; border: none; padding: 0; }
-  .ribbon-dot:hover { transform: scale(1.15); }
 
   nav.tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; margin: 24px 0; }
   nav.tabs button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 0; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; background: transparent; }
@@ -69,7 +65,7 @@
   .swatch-btn:hover { transform: translateY(-2px); }
   .swatch-btn:active { transform: scale(.97); }
   .drop { border-radius: 60% 40% 55% 45% / 55% 45% 60% 40%; width: 26px; height: 26px; }
-  .swatch-label { font-size: 10px; font-weight: 500; text-align: center; line-height: 1.15; }
+  .swatch-label { font-size: 10px; font-weight: 600; text-align: center; line-height: 1.15; }
 
   textarea#note-input { width: 100%; border-radius: 12px; padding: 12px; font-size: 14px; resize: none; margin-bottom: 16px; font-family: 'Karla', sans-serif; border-width: 1.5px; border-style: solid; }
 
@@ -126,7 +122,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (prefers-reduced-motion: reduce) {
-    .swatch-btn, .ribbon-dot, .toggle, .toggle .knob, .cal-cell { transition: none !important; }
+    .swatch-btn, .toggle, .toggle .knob, .cal-cell { transition: none !important; }
   }
 </style>
 </head>
@@ -141,7 +137,6 @@
 </div>
 
 <script>
-/* ---------- Fallback para LocalStorage Nativo ---------- */
 if (!window.storage) {
   window.storage = {
     get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
@@ -150,7 +145,6 @@ if (!window.storage) {
   };
 }
 
-/* ---------- data ---------- */
 const IDENTITIES = [
   { id: "feminino",  label: "Feminino",       color: "#F0A8C4", deep: "#C15F8F" },
   { id: "agenero",   label: "Agênero",        color: "#FFFFFF", deep: "#8A8094", border: "#D9D0C5", textDark: true },
@@ -213,7 +207,6 @@ const ICONS = {
   pill: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>',
 };
 
-/* ---------- state ---------- */
 const state = {
   entries: {},
   settings: { usesHormones: false, reminderEnabled: false, reminderTime: "08:00" },
@@ -232,7 +225,6 @@ const state = {
 const themeState = { displayId: "default", prevId: null };
 let swRegistration = null;
 
-/* ---------- Service Worker Registro ---------- */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
@@ -243,7 +235,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-/* ---------- helpers ---------- */
 function ident(id){ return IDENTITIES.find(i => i.id === id); }
 function dateKey(d){
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
@@ -253,7 +244,6 @@ function startOfDay(d){ const c = new Date(d); c.setHours(0,0,0,0); return c; }
 function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 function currentThemeId(){ return state.draftIdentity && THEMES[state.draftIdentity] ? state.draftIdentity : "default"; }
 
-/* ---------- persistence ---------- */
 function loadAll(){
   Promise.all([
     window.storage.get("entries").catch(() => null),
@@ -279,7 +269,6 @@ function persistSettings(){
   window.storage.set("settings", JSON.stringify(state.settings)).catch(() => {});
 }
 
-/* ---------- theme crossfade ---------- */
 function applyThemeLayers(){
   const bgNew = document.getElementById("bg-new");
   const bgOld = document.getElementById("bg-old");
@@ -292,7 +281,7 @@ function applyThemeLayers(){
     bgOld.style.backgroundColor = p.backgroundColor;
     bgOld.style.backgroundImage = p.backgroundImage;
     bgOld.style.opacity = "1";
-    void bgOld.offsetWidth; // force reflow
+    void bgOld.offsetWidth;
     bgOld.style.transition = "opacity 900ms ease";
     bgOld.style.opacity = "0";
   } else {
@@ -308,7 +297,6 @@ function updateTheme(id){
   applyThemeLayers();
 }
 
-/* ---------- actions ---------- */
 function syncDraftFromSelected(){
   const k = dateKey(state.selectedDate);
   const existing = state.entries[k];
@@ -360,22 +348,12 @@ async function toggleReminderSetting(){
     const permissao = await Notification.requestPermission();
     if (permissao === 'granted') {
       updateSettings({ reminderEnabled: true });
-      dispararNotificacao("Lembretes Ativados! 🌊", "Você receberá o diário no horário configurado.");
     } else {
       alert('Permissão de notificação negada no navegador.');
       updateSettings({ reminderEnabled: false });
     }
   } else {
     updateSettings({ reminderEnabled: false });
-  }
-}
-
-function dispararNotificacao(titulo, corpo) {
-  if (swRegistration && Notification.permission === 'granted') {
-    swRegistration.showNotification(titulo, {
-      body: corpo,
-      vibrate: [200, 100, 200]
-    });
   }
 }
 
@@ -393,7 +371,6 @@ function reminderDue(){
   return now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m);
 }
 
-/* ---------- render ---------- */
 function render(){
   const app = document.getElementById("app");
   if (!app) return;
@@ -402,7 +379,20 @@ function render(){
   let html = `
     <header>
       <div class="top-row">
-        <div class="app-icon"></div>
+        <div class="app-icon">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="mareGrad" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#F0A8C4" />
+                <stop offset="50%" stop-color="#BE93DE" />
+                <stop offset="100%" stop-color="#7FAADB" />
+              </linearGradient>
+            </defs>
+            <path d="M50 8C72 8 92 28 92 50C92 72 72 92 50 92C28 92 8 72 8 50C8 28 28 8 50 8Z" stroke="url(#mareGrad)" stroke-width="3" stroke-dasharray="4 2" opacity="0.4" />
+            <path d="M25 62C32 42 42 38 50 52C58 38 68 42 75 62C65 52 57 52 50 64C43 52 35 52 25 62Z" fill="url(#mareGrad)" />
+            <circle cx="50" cy="28" r="6" fill="url(#mareGrad)" />
+          </svg>
+        </div>
         <div>
           <h1 class="font-display">Maré</h1>
           <p class="subtitle" style="color:${t.inkSoft}">um diário para escutar quem você sente, dia a dia</p>
@@ -411,9 +401,9 @@ function render(){
     </header>
 
     <nav class="tabs" style="background:${t.surface}">
-      <button style="${state.tab==='hoje' ? `background:#fff; color:${t.ink}; box-shadow:0 1px 3px rgba(0,0,0,0.08)` : `color:${t.inkSoft}`}" onclick="setTab('hoje')">${ICONS.book} Hoje</button>
-      <button style="${state.tab==='calendario' ? `background:#fff; color:${t.ink}; box-shadow:0 1px 3px rgba(0,0,0,0.08)` : `color:${t.inkSoft}`}" onclick="setTab('calendario')">${ICONS.calendar} Calendário</button>
-      <button style="${state.tab==='resumo' ? `background:#fff; color:${t.ink}; box-shadow:0 1px 3px rgba(0,0,0,0.08)` : `color:${t.inkSoft}`}" onclick="setTab('resumo')">${ICONS.bars} Resumo</button>
+      <button style="${state.tab==='hoje' ? `background:${t.mode === 'dark' ? '#3D3846' : '#fff'}; color:${t.ink}; box-shadow:0 1px 3px rgba(0,0,0,0.08)` : `color:${t.inkSoft}`}" onclick="setTab('hoje')">${ICONS.book} Hoje</button>
+      <button style="${state.tab==='calendario' ? `background:${t.mode === 'dark' ? '#3D3846' : '#fff'}; color:${t.ink}; box-shadow:0 1px 3px rgba(0,0,0,0.08)` : `color:${t.inkSoft}`}" onclick="setTab('calendario')">${ICONS.calendar} Calendário</button>
+      <button style="${state.tab==='resumo' ? `background:${t.mode === 'dark' ? '#3D3846' : '#fff'}; color:${t.ink}; box-shadow:0 1px 3px rgba(0,0,0,0.08)` : `color:${t.inkSoft}`}" onclick="setTab('resumo')">${ICONS.bars} Resumo</button>
     </nav>
   `;
 
@@ -424,7 +414,7 @@ function render(){
     const wDay = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"][state.selectedDate.getDay()];
 
     html += `
-      ${reminderDue() ? `<div class="reminder-banner" style="background:${t.surface}">${ICONS.bell} Você ainda não registrou como se sente hoje.</div>` : ''}
+      ${reminderDue() ? `<div class="reminder-banner" style="background:${t.surface}; color:${t.ink}">${ICONS.bell} Você ainda não registrou como se sente hoje.</div>` : ''}
       <div class="date-row">
         <div>
           <div class="date-num font-display">${dayNum} de ${monthName}</div>
@@ -434,31 +424,38 @@ function render(){
       </div>
 
       <p class="hint" style="color:${t.inkSoft}">Como você se sente/se expressa hoje?</p>
+
+      <!-- BOTÕES DE SELEÇÃO COM PALAVRAS DE ALTO CONTRASTE NO TEMA ESCURO -->
       <div class="swatch-grid">
         ${IDENTITIES.map(id => {
           const sel = state.draftIdentity === id.id;
+          let labelColor = '#2E2440'; // Texto escuro padrão para botões brancos desmarcados
+          if (sel) {
+            labelColor = id.textDark ? '#2E2440' : '#ffffff';
+          }
           return `
-            <div class="swatch-btn" style="border-color:${sel ? id.deep : t.paperLine}; background:${sel ? id.color : '#fff'}; color:${sel && !id.textDark ? '#fff' : t.ink}" onclick="toggleIdentity('${id.id}')">
+            <div class="swatch-btn" style="border-color:${sel ? id.deep : t.paperLine}; background:${sel ? id.color : '#ffffff'}; color:${labelColor}" onclick="toggleIdentity('${id.id}')">
               <div class="drop" style="background:${id.color}; border:1px solid ${id.border || 'transparent'}"></div>
-              <span class="swatch-label">${id.label}</span>
+              <span class="swatch-label" style="color:${labelColor}">${id.label}</span>
             </div>
           `;
         }).join('')}
       </div>
 
-      <textarea id="note-input" rows="3" placeholder="Aotações ou pensamentos do dia (opcional)..." style="border-color:${t.paperLine}; background:#fff; color:${t.ink}">${esc(state.draftNote)}</textarea>
+      <textarea id="note-input" rows="3" placeholder="Aotações ou pensamentos do dia (opcional)..." style="border-color:${t.paperLine}; background:#ffffff; color:#2E2440">${esc(state.draftNote)}</textarea>
 
       ${state.settings.usesHormones ? `
         <div class="hormone-today-row" style="background:${t.surface}">
-          <span style="font-size:14px; font-weight:500;">Tomou hormônio hoje?</span>
+          <span style="font-size:14px; font-weight:500; color:${t.ink}">Tomou hormônio hoje?</span>
           <button class="toggle" style="background-color:${state.draftHormone ? GOLD : t.paperLine}" onclick="state.draftHormone = !state.draftHormone; render();">
             <div class="knob" style="left:${state.draftHormone ? '19.5px' : '2.5px'}"></div>
           </button>
         </div>
       ` : ''}
 
+      <!-- BOTÃO SALVAR COM CONTRASTE TOTAL -->
       <div class="action-row">
-        <button class="btn-save" style="background:${state.savedFlash ? '#4779AE' : t.ink}; color:#fff" onclick="saveEntry()">
+        <button class="btn-save" style="background:${state.savedFlash ? '#4779AE' : (t.mode === 'dark' ? '#F3EFE9' : t.ink)}; color:${t.mode === 'dark' ? '#221F29' : '#ffffff'}" onclick="saveEntry()">
           ${state.savedFlash ? `${ICONS.check} Salvo!` : 'Salvar Registro'}
         </button>
         ${state.entries[dateKey(state.selectedDate)] ? `
@@ -468,28 +465,29 @@ function render(){
 
       ${state.storageError ? `<div class="storage-err">Erro ao salvar os dados no dispositivo.</div>` : ''}
 
-      <div class="settings-card" style="border-color:${t.paperLine}">
+      <!-- CARD DE CONFIGURAÇÕES COM TEXTO ESCURO GARANTIDO EM FUNDO BRANCO -->
+      <div class="settings-card" style="border-color:${t.paperLine}; background:#ffffff; color:#2E2440">
         <div class="settings-row">
-          <span class="settings-label">${ICONS.pill} Acompanhar TSH / Hormônios</span>
-          <button class="toggle" style="background-color:${state.settings.usesHormones ? GOLD : t.paperLine}" onclick="updateSettings({usesHormones: !state.settings.usesHormones})">
+          <span class="settings-label" style="color:#2E2440">${ICONS.pill} Acompanhar TSH / Hormônios</span>
+          <button class="toggle" style="background-color:${state.settings.usesHormones ? GOLD : '#EAE1D8'}" onclick="updateSettings({usesHormones: !state.settings.usesHormones})">
             <div class="knob" style="left:${state.settings.usesHormones ? '19.5px' : '2.5px'}"></div>
           </button>
         </div>
 
-        <div class="settings-sub" style="border-color:${t.paperLine}">
+        <div class="settings-sub" style="border-color:#EAE1D8">
           <div class="settings-row" style="margin-bottom:12px;">
-            <span class="settings-label">${ICONS.bell} Lembrete Diário</span>
-            <button class="toggle" style="background-color:${state.settings.reminderEnabled ? GOLD : t.paperLine}" onclick="toggleReminderSetting()">
+            <span class="settings-label" style="color:#2E2440">${ICONS.bell} Lembrete Diário</span>
+            <button class="toggle" style="background-color:${state.settings.reminderEnabled ? GOLD : '#EAE1D8'}" onclick="toggleReminderSetting()">
               <div class="knob" style="left:${state.settings.reminderEnabled ? '19.5px' : '2.5px'}"></div>
             </button>
           </div>
           ${state.settings.reminderEnabled ? `
             <div class="settings-time-row">
-              <span class="settings-time-label" style="color:${t.inkSoft}">Horário:</span>
-              <input type="time" id="time-input" value="${state.settings.reminderTime}" style="border-color:${t.paperLine}; color:${t.ink}" onchange="updateSettings({reminderTime: this.value})">
+              <span class="settings-time-label" style="color:#8A8094">Horário:</span>
+              <input type="time" id="time-input" value="${state.settings.reminderTime}" style="border-color:#EAE1D8; background:#ffffff; color:#2E2440" onchange="updateSettings({reminderTime: this.value})">
             </div>
           ` : ''}
-          <p class="settings-note" style="color:${t.inkSoft}">Receba um alerta no celular caso esqueça de preencher o diário.</p>
+          <p class="settings-note" style="color:#8A8094">Receba um alerta no celular caso esqueça de preencher o diário.</p>
         </div>
       </div>
     `;
@@ -542,12 +540,12 @@ function render(){
     html += `
       <div class="range-row">
         ${[7, 30, 90].map(r => `
-          <button class="chip" style="border-color:${t.paperLine}; background:${state.range === r ? t.ink : '#fff'}; color:${state.range === r ? '#fff' : t.ink}" onclick="setRange(${r})">${r} dias</button>
+          <button class="chip" style="border-color:${t.paperLine}; background:${state.range === r ? t.ink : '#fff'}; color:${state.range === r ? (t.mode === 'dark' ? '#221F29' : '#fff') : '#2E2440'}" onclick="setRange(${r})">${r} dias</button>
         `).join('')}
       </div>
 
       ${totalEntries === 0 ? `
-        <div class="empty-state" style="border-color:${t.paperLine}; color:${t.inkSoft}">Nenhum registro salvo ainda para gerar estatísticas.</div>
+        <div class="empty-state" style="border-color:${t.paperLine}; background:#ffffff; color:#8A8094">Nenhum registro salvo ainda para gerar estatísticas.</div>
       ` : `
         <div class="spectrum-bar" style="border-color:${t.paperLine}">
           ${IDENTITIES.map(id => {
@@ -590,7 +588,6 @@ function render(){
   app.innerHTML = html;
 }
 
-/* ---------- boot ---------- */
 loadAll();
 </script>
 </body>
