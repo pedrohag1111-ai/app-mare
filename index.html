@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Maré">
 
+<!-- Supabase Client SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Karla:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -32,7 +35,6 @@
 
   header .top-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
   
-  /* Logo com o formato original esticando para ocupar toda a largura */
   .app-banner-icon { width: 100%; height: 75px; display: block; }
   .app-banner-icon svg { width: 100%; height: 100%; display: block; }
 
@@ -128,7 +130,7 @@
   }
 </style>
 </head>
-  <script>
+<script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
@@ -149,6 +151,11 @@
 </div>
 
 <script>
+// CONFIGURAÇÃO DO SUPABASE
+const SUPABASE_URL = 'https://txvzwzkpsdpmhkjtjjdb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_poFGsBpFwEfAT9f0UVTD2A_pafHBRSp';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 if (!window.storage) {
   window.storage = {
     get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
@@ -217,11 +224,17 @@ const ICONS = {
   trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
   check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   pill: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>',
+  logout: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>'
 };
 
 function startOfDay(d){ const c = new Date(d); c.setHours(0,0,0,0); return c; }
 
 const state = {
+  user: null,
+  authMode: 'login',
+  authEmail: '',
+  authPassword: '',
+  authError: null,
   entries: {},
   settings: { usesHormones: false, reminderEnabled: false, reminderTime: "08:00", lastNotificationDate: null },
   tab: "hoje",
@@ -292,7 +305,20 @@ function getDayBackgroundCSS(logs) {
   return `linear-gradient(135deg, ${stops})`;
 }
 
-function loadAll(){
+async function checkUserSession() {
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      state.user = session.user;
+    }
+  } catch (err) {
+    console.error("Erro ao checar sessão:", err);
+  }
+}
+
+async function loadAll(){
+  await checkUserSession();
+
   Promise.all([
     window.storage.get("entries").catch(() => null),
     window.storage.get("settings").catch(() => null),
@@ -443,6 +469,41 @@ async function toggleReminderSetting(){
   checkAndSendReminder();
 }
 
+async function handleAuthSubmit() {
+  state.authError = null;
+  const email = state.authEmail;
+  const password = state.authPassword;
+
+  if (!email || !password) {
+    state.authError = "Preencha o e-mail e a senha.";
+    render();
+    return;
+  }
+
+  try {
+    if (state.authMode === 'login') {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      state.user = data.user;
+    } else {
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) throw error;
+      state.user = data.user;
+      alert("Conta criada com sucesso! Verifique seu e-mail se necessário.");
+    }
+    render();
+  } catch (err) {
+    state.authError = err.message || "Erro na autenticação.";
+    render();
+  }
+}
+
+async function handleLogout() {
+  await supabaseClient.auth.signOut();
+  state.user = null;
+  render();
+}
+
 function render(){
   const theme = THEMES[themeState.displayId];
   const INK = theme.ink, INK_SOFT = theme.inkSoft, PAPER_LINE = theme.paperLine, SURFACE = theme.surface;
@@ -451,13 +512,53 @@ function render(){
   const isToday = dateKey(state.selectedDate) === dateKey(today);
 
   let html = "";
-  html += renderHeader(INK, INK_SOFT, PAPER_LINE);
-  html += renderNav(SURFACE, INK, INK_SOFT);
-  if (state.tab === "hoje") html += renderHoje(INK, INK_SOFT, ON_INK, isToday, today);
-  if (state.tab === "calendario") html += renderCalendario(INK_SOFT);
-  if (state.tab === "estatisticas") html += renderEstatisticas(INK, INK_SOFT, ON_INK);
+  if (!state.user) {
+    html = renderAuth(INK, INK_SOFT, SURFACE);
+  } else {
+    html += renderHeader(INK, INK_SOFT, PAPER_LINE);
+    html += renderNav(SURFACE, INK, INK_SOFT);
+    if (state.tab === "hoje") html += renderHoje(INK, INK_SOFT, ON_INK, isToday, today);
+    if (state.tab === "calendario") html += renderCalendario(INK_SOFT);
+    if (state.tab === "estatisticas") html += renderEstatisticas(INK, INK_SOFT, ON_INK);
+  }
 
   document.getElementById("app").innerHTML = html;
+}
+
+function renderAuth(INK, INK_SOFT, SURFACE) {
+  const isLogin = state.authMode === 'login';
+  return `
+    <div style="min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+      <div style="width: 100%; max-width: 380px; background: #FFFFFF; padding: 32px; border-radius: 24px; border: 1.5px solid ${DEFAULT_PAPER_LINE}; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+        <h2 class="font-display" style="font-size: 24px; color: ${DEFAULT_INK}; margin-top: 0; margin-bottom: 8px; text-align: center;">Maré</h2>
+        <p style="font-size: 13px; color: ${INK_SOFT}; text-align: center; margin-bottom: 24px;">
+          ${isLogin ? 'Entre na sua conta para sincronizar seus registros' : 'Crie sua conta para salvar seus dados'}
+        </p>
+
+        ${state.authError ? `<div style="background: #FDF1F5; color: #B8628F; padding: 10px; border-radius: 8px; font-size: 12px; margin-bottom: 16px; text-align: center;">${esc(state.authError)}</div>` : ''}
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 12px; font-weight: 500; color: ${DEFAULT_INK}; display: block; margin-bottom: 6px;">E-mail</label>
+          <input type="email" id="auth-email-input" value="${esc(state.authEmail)}" placeholder="seu@email.com" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid ${DEFAULT_PAPER_LINE}; font-family: 'Karla', sans-serif; font-size: 14px;" />
+        </div>
+
+        <div style="margin-bottom: 24px;">
+          <label style="font-size: 12px; font-weight: 500; color: ${DEFAULT_INK}; display: block; margin-bottom: 6px;">Senha</label>
+          <input type="password" id="auth-password-input" value="${esc(state.authPassword)}" placeholder="••••••••" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid ${DEFAULT_PAPER_LINE}; font-family: 'Karla', sans-serif; font-size: 14px;" />
+        </div>
+
+        <button data-action="submit-auth" style="width: 100%; padding: 12px; border-radius: 10px; background: ${DEFAULT_INK}; color: #FAF6F1; border: none; font-weight: 600; font-size: 14px; cursor: pointer; margin-bottom: 16px;">
+          ${isLogin ? 'Entrar' : 'Cadastrar'}
+        </button>
+
+        <div style="text-align: center;">
+          <button data-action="toggle-auth-mode" style="background: none; border: none; color: ${INK_SOFT}; font-size: 12px; cursor: pointer; text-decoration: underline;">
+            ${isLogin ? 'Não tem uma conta? Cadastre-se' : 'Já tem uma conta? Faça login'}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderHeader(INK, INK_SOFT, PAPER_LINE){
@@ -473,7 +574,6 @@ function renderHeader(INK, INK_SOFT, PAPER_LINE){
     ribbon += `<button class="ribbon-dot" data-action="select-date" data-date="${d.toISOString()}" title="${d.getDate()}/${d.getMonth()+1}" style="background:${bg};border:${border};"></button>`;
   }
   
-  // LOGO COM O SEU FORMATO ORIGINAL EXATO, ESTICANDO DE PONTA A PONTA
   const horizontalSvg = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="100%" height="100%" preserveAspectRatio="none">
       <defs>
@@ -641,6 +741,16 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
     }
     out += `</div>`;
   }
+
+  out += `<div class="settings-sub" style="border-color:${DEFAULT_PAPER_LINE}; margin-top: 16px;">
+    <div class="settings-row">
+      <span class="settings-label" style="color:${DEFAULT_INK}; font-size: 13px;">Conta: ${esc(state.user.email)}</span>
+      <button data-action="logout" style="background: transparent; border: 1.5px solid ${DEFAULT_PAPER_LINE}; padding: 6px 12px; border-radius: 8px; color: ${DEFAULT_INK}; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 12px;">
+        ${ICONS.logout} Sair
+      </button>
+    </div>
+  </div>`;
+
   out += `</div>`;
 
   out += '</section>';
@@ -828,11 +938,22 @@ document.getElementById("app").addEventListener("click", (e) => {
     case "ask-reset": state.confirmingReset = true; render(); break;
     case "confirm-reset": resetAll(); break;
     case "cancel-reset": state.confirmingReset = false; render(); break;
+    case "submit-auth": handleAuthSubmit(); break;
+    case "toggle-auth-mode":
+      state.authMode = state.authMode === 'login' ? 'signup' : 'login';
+      state.authError = null;
+      render();
+      break;
+    case "logout": handleLogout(); break;
   }
 });
+
 document.getElementById("app").addEventListener("input", (e) => {
   if (e.target.id === "note-input") state.draftNote = e.target.value;
+  if (e.target.id === "auth-email-input") state.authEmail = e.target.value;
+  if (e.target.id === "auth-password-input") state.authPassword = e.target.value;
 });
+
 document.getElementById("app").addEventListener("change", (e) => {
   if (e.target.id === "time-input") {
     updateSettings({ reminderTime: e.target.value });
