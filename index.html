@@ -31,7 +31,7 @@
   .wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 96px; }
 
   header .top-row { display: flex; align-items: center; gap: 12px; }
-  .app-icon { width: 34px; height: 34px; border-radius: 60% 40% 55% 45% / 55% 45% 60% 40%; flex-shrink: 0; }
+  .app-icon { width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   header h1 { font-size: 24px; line-height: 1; margin: 0; }
   header .subtitle { font-size: 12px; margin: 4px 0 0; }
 
@@ -225,7 +225,6 @@ const state = {
 };
 const themeState = { displayId: "default", prevId: null };
 
-/* ---------- Notificações Otimizadas ---------- */
 function sendNotification() {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   try {
@@ -255,7 +254,6 @@ function checkAndSendReminder() {
 
 setInterval(checkAndSendReminder, 30000);
 
-/* ---------- helpers ---------- */
 function ident(id){ return IDENTITIES.find(i => i.id === id); }
 function dateKey(d){
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
@@ -281,7 +279,6 @@ function getDayBackgroundCSS(logs) {
   return `linear-gradient(135deg, ${stops})`;
 }
 
-/* ---------- persistence ---------- */
 function loadAll(){
   Promise.all([
     window.storage.get("entries").catch(() => null),
@@ -315,7 +312,6 @@ function persistSettings(){
   window.storage.set("settings", JSON.stringify(state.settings)).catch(() => {});
 }
 
-/* ---------- theme crossfade ---------- */
 function applyThemeLayers(){
   const bgNew = document.getElementById("bg-new");
   const bgOld = document.getElementById("bg-old");
@@ -344,7 +340,6 @@ function updateTheme(id){
   applyThemeLayers();
 }
 
-/* ---------- actions ---------- */
 function syncDraftFromSelected(){
   state.draftIdentity = null;
   state.draftNote = "";
@@ -435,7 +430,6 @@ async function toggleReminderSetting(){
   checkAndSendReminder();
 }
 
-/* ---------- render ---------- */
 function render(){
   const theme = THEMES[themeState.displayId];
   const INK = theme.ink, INK_SOFT = theme.inkSoft, PAPER_LINE = theme.paperLine, SURFACE = theme.surface;
@@ -454,7 +448,6 @@ function render(){
 }
 
 function renderHeader(INK, INK_SOFT, PAPER_LINE){
-  const grad = IDENTITIES.map(i => i.color).join(", ");
   const today = startOfDay(new Date());
   let ribbon = "";
   for (let i = 13; i >= 0; i--){
@@ -466,10 +459,32 @@ function renderHeader(INK, INK_SOFT, PAPER_LINE){
     const border = hasLogs ? "none" : `1.5px dashed ${PAPER_LINE}`;
     ribbon += `<button class="ribbon-dot" data-action="select-date" data-date="${d.toISOString()}" title="${d.getDate()}/${d.getMonth()+1}" style="background:${bg};border:${border};"></button>`;
   }
+  
+  // LOGO HORIZONTAL EMBUTIDA NO CABEÇALHO
+  const horizontalSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="100%" height="100%">
+      <defs>
+        <linearGradient id="fluidHorizGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#FF75A2" />
+          <stop offset="25%" stop-color="#FFFFFF" />
+          <stop offset="50%" stop-color="#BE93DE" />
+          <stop offset="75%" stop-color="#332F38" />
+          <stop offset="100%" stop-color="#5089C6" />
+        </linearGradient>
+        <filter id="shadowHoriz" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#2E2440" flood-opacity="0.12" />
+        </filter>
+      </defs>
+      <path d="M 50,20 L 250,20 C 280,20 290,50 270,75 C 250,100 220,100 180,90 C 140,80 100,105 50,100 C 20,95 10,65 25,40 C 35,25 40,20 50,20 Z" fill="url(#fluidHorizGrad)" filter="url(#shadowHoriz)" />
+      <circle cx="80" cy="60" r="4" fill="#FFFFFF" opacity="0.8" />
+      <circle cx="150" cy="55" r="5" fill="#FFFFFF" opacity="0.9" />
+      <circle cx="220" cy="60" r="4" fill="#FFFFFF" opacity="0.8" />
+    </svg>`;
+
   return `
     <header>
       <div class="top-row">
-        <div class="app-icon" style="background: linear-gradient(135deg, ${grad}); border: 1px solid ${PAPER_LINE};"></div>
+        <div class="app-icon" style="width: 110px; height: 40px;">${horizontalSvg}</div>
         <div>
           <h1 class="font-display" style="color:${INK};">Maré</h1>
           <p class="subtitle" style="color:${INK_SOFT};">um diário para acompanhar como seu gênero se sente, dia após dia</p>
@@ -512,6 +527,30 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
       <p class="weekday" style="color:${INK_SOFT};">${isToday ? "Hoje · " : ""}${esc(weekdayStr)}</p>
     </div>
     ${!isToday ? `<button class="back-today" data-action="go-today" style="color:${GOLD};border:1px solid ${GOLD};">voltar para hoje</button>` : ""}
+  </div>`;
+
+  // LOGO CIRCULAR NA TELA INICIAL
+  const circularSvg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+      <defs>
+        <linearGradient id="fluidCircleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FF75A2" />
+          <stop offset="25%" stop-color="#FFFFFF" />
+          <stop offset="50%" stop-color="#BE93DE" />
+          <stop offset="75%" stop-color="#332F38" />
+          <stop offset="100%" stop-color="#5089C6" />
+        </linearGradient>
+        <filter id="shadowCircle" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#2E2440" flood-opacity="0.15" />
+        </filter>
+      </defs>
+      <circle cx="100" cy="100" r="80" fill="url(#fluidCircleGrad)" filter="url(#shadowCircle)" />
+      <path d="M 100,20 C 140,20 180,60 160,100 C 140,140 110,130 90,150 C 70,170 80,180 100,180 C 55,180 20,145 20,100 C 20,55 55,20 100,20 Z" fill="#FAF6F1" opacity="0.25" />
+      <circle cx="100" cy="100" r="5" fill="#FFFFFF" opacity="0.9" />
+    </svg>`;
+
+  out += `<div style="display:flex; justify-content:center; margin-bottom: 20px;">
+    <div style="width: 80px; height: 80px;">${circularSvg}</div>
   </div>`;
 
   out += `<p class="hint" style="color:${INK_SOFT};">Adicionar registro de gênero agora:</p>`;
@@ -769,7 +808,6 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
   return out;
 }
 
-/* ---------- event delegation ---------- */
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (!el) return;
@@ -805,7 +843,6 @@ document.getElementById("app").addEventListener("change", (e) => {
   }
 });
 
-/* ---------- boot ---------- */
 loadAll();
 </script>
 </body>
