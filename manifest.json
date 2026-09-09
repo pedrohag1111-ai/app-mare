@@ -22,5 +22,12 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "id": "com.mare.diario",
+  "description": "Um diário para acompanhar como seu gênero se sente, dia após dia",
+  "categories": [
+    "health",
+    "lifestyle",
+    "utilities"
   ]
 }
