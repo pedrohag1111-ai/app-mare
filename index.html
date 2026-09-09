@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Maré — diário de identidade de gênero</title>
 
-<!-- Configurações PWA (Instalação no Celular) -->
+<!-- Configurações PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#FAF6F1">
 <meta name="mobile-web-app-capable" content="yes">
@@ -64,7 +64,6 @@
   .btn-save { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; }
   .storage-err { font-size: 12px; margin-top: 12px; color: #B8628F; }
 
-  /* Lista de Registros do Dia */
   .day-logs-container { margin-top: 24px; }
   .day-log-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; background: #fff; margin-bottom: 8px; border: 1.5px solid #EAE1D8; }
   .day-log-info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
@@ -136,7 +135,7 @@
 </div>
 
 <script>
-/* ---------- Fallback para LocalStorage Nativo ---------- */
+// Fallback para storage
 if (!window.storage) {
   window.storage = {
     get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
@@ -145,7 +144,6 @@ if (!window.storage) {
   };
 }
 
-/* ---------- data ---------- */
 const IDENTITIES = [
   { id: "feminino",  label: "Feminino",       color: "#F0A8C4", deep: "#C15F8F" },
   { id: "agenero",   label: "Agênero",        color: "#FFFFFF", deep: "#8A8094", border: "#D9D0C5", textDark: true },
@@ -208,7 +206,8 @@ const ICONS = {
   pill: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>',
 };
 
-/* ---------- state ---------- */
+function startOfDay(d){ const c = new Date(d); c.setHours(0,0,0,0); return c; }
+
 const state = {
   entries: {},
   settings: { usesHormones: false, reminderEnabled: false, reminderTime: "08:00", lastNotificationDate: null },
@@ -226,50 +225,20 @@ const state = {
 };
 const themeState = { displayId: "default", prevId: null };
 
-/* ---------- Service Worker e Notificações ---------- */
-function initNotifications() {
-  if ('serviceWorker' in navigator) {
-    const swCode = `
-      self.addEventListener('notificationclick', function(event) {
-        event.notification.close();
-        event.waitUntil(
-          clients.matchAll({ type: 'window' }).then(function(clientList) {
-            for (let i = 0; i < clientList.length; i++) {
-              let client = clientList[i];
-              if ('focus' in client) return client.focus();
-            }
-            if (clients.openWindow) return clients.openWindow('/');
-          })
-        );
-      });
-    `;
-    const blob = new Blob([swCode], { type: 'application/javascript' });
-    const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl).catch(() => {});
-  }
-}
-
+/* ---------- Notificações Otimizadas ---------- */
 function sendNotification() {
-  const title = "Maré — Diário de Gênero";
-  const options = {
-    body: "Hora de cuidar de você — não esqueça de fazer seu registro e tomar seus hormônios 💊",
-    icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>",
-    badge: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>"
-  };
-
-  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification(title, options);
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  try {
+    new Notification("Maré — Diário de Gênero", {
+      body: "Hora de cuidar de você — não esqueça do seu registro diário 💊",
     });
-  } else if ("Notification" in window && Notification.permission === "granted") {
-    new Notification(title, options);
+  } catch(e) {
+    console.log("Erro ao emitir notificação", e);
   }
 }
 
 function checkAndSendReminder() {
   if (!state.settings.reminderEnabled) return;
-  if ("Notification" in window && Notification.permission !== "granted") return;
-
   const now = new Date();
   const todayKey = dateKey(startOfDay(now));
 
@@ -284,8 +253,7 @@ function checkAndSendReminder() {
   }
 }
 
-// Inicia verificação contínua a cada minuto
-setInterval(checkAndSendReminder, 60000);
+setInterval(checkAndSendReminder, 30000);
 
 /* ---------- helpers ---------- */
 function ident(id){ return IDENTITIES.find(i => i.id === id); }
@@ -293,7 +261,6 @@ function dateKey(d){
   const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
   return `${y}-${m}-${day}`;
 }
-function startOfDay(d){ const c = new Date(d); c.setHours(0,0,0,0); return c; }
 function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 function currentThemeId(){ return state.draftIdentity && THEMES[state.draftIdentity] ? state.draftIdentity : "default"; }
 
@@ -322,15 +289,21 @@ function loadAll(){
   ]).then(([e, s]) => {
     if (e && e.value) { try { state.entries = JSON.parse(e.value); } catch(err){} }
     if (s && s.value) { try { state.settings = { ...state.settings, ...JSON.parse(s.value) }; } catch(err){} }
+  }).finally(() => {
     syncDraftFromSelected();
     updateTheme(currentThemeId());
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("content-wrap").style.display = "block";
-    initNotifications();
+    
+    const loadingEl = document.getElementById("loading");
+    const contentEl = document.getElementById("content-wrap");
+    
+    if (loadingEl) loadingEl.style.display = "none";
+    if (contentEl) contentEl.style.display = "block";
+
     checkAndSendReminder();
     render();
   });
 }
+
 function persistEntries(){
   state.storageError = false;
   window.storage.set("entries", JSON.stringify(state.entries)).catch(() => {
@@ -454,7 +427,7 @@ async function toggleReminderSetting(){
         return;
       }
     } else {
-      alert("Seu navegador não suporta Notificações.");
+      alert("Seu navegador atual não dá suporte a notificações de sistema.");
       return;
     }
   }
@@ -528,7 +501,7 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
   if (reminderDue()){
     out += `<div class="reminder-banner" style="background:#FFFFFF;border:1.5px solid ${DEFAULT_PAPER_LINE};">
       <span style="color:${DEFAULT_INK};display:flex;">${ICONS.bell}</span>
-      <span style="color:${DEFAULT_INK};">Lembrete: hora de cuidar de você — não esqueça dos hormônios 💊</span>
+      <span style="color:${DEFAULT_INK};">Lembrete: hora de cuidar de você — não esqueça do seu registro! 💊</span>
     </div>`;
   }
 
@@ -580,7 +553,6 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
     </button>
   </div>`;
 
-  /* Lista de registros já feitos hoje */
   const currentLogs = getNormalizedDayLogs(dateKey(state.selectedDate));
   if (currentLogs.length > 0) {
     out += `<div class="day-logs-container">
@@ -605,7 +577,6 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
     out += `<p class="storage-err">Não consegui salvar agora. Tente novamente em instantes.</p>`;
   }
 
-  /* settings card */
   const hormOn = state.settings.usesHormones;
   const remOn = state.settings.reminderEnabled;
   out += `<div class="settings-card" style="border-color:${DEFAULT_PAPER_LINE};">
@@ -679,7 +650,7 @@ function renderCalendario(INK_SOFT){
 
     const hasHormone = logs.some(l => l.hormone);
     const showHormoneBadge = state.settings.usesHormones && hasHormone;
-    const badgeIcon = '<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>';
+    const badgeIcon = '<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>';
     const badge = showHormoneBadge
       ? `<span style="position:absolute;top:-4px;right:-4px;width:15px;height:15px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.25);pointer-events:none;color:${GOLD};z-index:2;">${badgeIcon}</span>`
       : "";
@@ -798,7 +769,7 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
   return out;
 }
 
-/* ---------- events (delegated) ---------- */
+/* ---------- event delegation ---------- */
 document.getElementById("app").addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (!el) return;
