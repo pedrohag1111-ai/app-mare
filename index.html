@@ -211,7 +211,7 @@ const ICONS = {
 /* ---------- state ---------- */
 const state = {
   entries: {},
-  settings: { usesHormones: false, reminderEnabled: false, reminderTime: "08:00" },
+  settings: { usesHormones: false, reminderEnabled: false, reminderTime: "08:00", lastNotificationDate: null },
   tab: "hoje",
   selectedDate: startOfDay(new Date()),
   draftIdentity: null,
@@ -226,6 +226,67 @@ const state = {
 };
 const themeState = { displayId: "default", prevId: null };
 
+/* ---------- Service Worker e Notificações ---------- */
+function initNotifications() {
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      self.addEventListener('notificationclick', function(event) {
+        event.notification.close();
+        event.waitUntil(
+          clients.matchAll({ type: 'window' }).then(function(clientList) {
+            for (let i = 0; i < clientList.length; i++) {
+              let client = clientList[i];
+              if ('focus' in client) return client.focus();
+            }
+            if (clients.openWindow) return clients.openWindow('/');
+          })
+        );
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+}
+
+function sendNotification() {
+  const title = "Maré — Diário de Gênero";
+  const options = {
+    body: "Hora de cuidar de você — não esqueça de fazer seu registro e tomar seus hormônios 💊",
+    icon: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>",
+    badge: "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>"
+  };
+
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.showNotification(title, options);
+    });
+  } else if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, options);
+  }
+}
+
+function checkAndSendReminder() {
+  if (!state.settings.reminderEnabled) return;
+  if ("Notification" in window && Notification.permission !== "granted") return;
+
+  const now = new Date();
+  const todayKey = dateKey(startOfDay(now));
+
+  if (state.settings.lastNotificationDate === todayKey) return;
+
+  const [h, m] = state.settings.reminderTime.split(":").map(Number);
+  const isTimeOrLater = now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m);
+
+  if (isTimeOrLater) {
+    sendNotification();
+    updateSettings({ lastNotificationDate: todayKey });
+  }
+}
+
+// Inicia verificação contínua a cada minuto
+setInterval(checkAndSendReminder, 60000);
+
 /* ---------- helpers ---------- */
 function ident(id){ return IDENTITIES.find(i => i.id === id); }
 function dateKey(d){
@@ -236,15 +297,13 @@ function startOfDay(d){ const c = new Date(d); c.setHours(0,0,0,0); return c; }
 function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 function currentThemeId(){ return state.draftIdentity && THEMES[state.draftIdentity] ? state.draftIdentity : "default"; }
 
-/* Helper para migrar e normalizar dados antigos para Array */
 function getNormalizedDayLogs(key) {
   const data = state.entries[key];
   if (!data) return [];
   if (Array.isArray(data)) return data;
-  return [data]; // Migra dado único antigo para formato de Array
+  return [data];
 }
 
-/* Helper para gerar o CSS Background do Calendário/Ribbon */
 function getDayBackgroundCSS(logs) {
   if (!logs || logs.length === 0) return "#FFFFFF";
   if (logs.length === 1) return ident(logs[0].identity)?.color || "#FFFFFF";
@@ -267,6 +326,8 @@ function loadAll(){
     updateTheme(currentThemeId());
     document.getElementById("loading").style.display = "none";
     document.getElementById("content-wrap").style.display = "block";
+    initNotifications();
+    checkAndSendReminder();
     render();
   });
 }
@@ -294,7 +355,7 @@ function applyThemeLayers(){
     bgOld.style.backgroundColor = p.backgroundColor;
     bgOld.style.backgroundImage = p.backgroundImage;
     bgOld.style.opacity = "1";
-    void bgOld.offsetWidth; // force reflow
+    void bgOld.offsetWidth;
     bgOld.style.transition = "opacity 900ms ease";
     bgOld.style.opacity = "0";
   } else {
@@ -381,6 +442,24 @@ function reminderDue(){
   const [h, m] = state.settings.reminderTime.split(":").map(Number);
   const now = new Date();
   return now.getHours() > h || (now.getHours() === h && now.getMinutes() >= m);
+}
+
+async function toggleReminderSetting(){
+  const nextState = !state.settings.reminderEnabled;
+  if (nextState) {
+    if ("Notification" in window) {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        alert("Ative as permissões de notificação no seu navegador para receber os lembretes!");
+        return;
+      }
+    } else {
+      alert("Seu navegador não suporta Notificações.");
+      return;
+    }
+  }
+  updateSettings({ reminderEnabled: nextState });
+  checkAndSendReminder();
 }
 
 /* ---------- render ---------- */
@@ -550,7 +629,7 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
         <input type="time" id="time-input" value="${state.settings.reminderTime}" style="border-color:${DEFAULT_PAPER_LINE};color:${DEFAULT_INK};background:#FFFFFF;" />
       </div>
       <p class="settings-note" style="color:${DEFAULT_INK_SOFT};">
-        A Maré lembrará você assim que abrir o app após o horário selecionado.
+        Você receberá uma notificação do sistema diariamente no horário selecionado.
       </p>`;
     }
     out += `</div>`;
@@ -580,7 +659,6 @@ function renderCalendario(INK_SOFT){
     
     const bg = getDayBackgroundCSS(logs);
     
-    // Cor do texto
     let color = DEFAULT_INK_SOFT;
     if (hasLogs) {
       const firstIdent = ident(logs[0].identity);
@@ -737,7 +815,7 @@ document.getElementById("app").addEventListener("click", (e) => {
     case "delete-log-item": deleteLogItem(Number(index)); break;
     case "toggle-hormones": updateSettings({ usesHormones: !state.settings.usesHormones }); break;
     case "toggle-hormone-today": state.draftHormone = !state.draftHormone; render(); break;
-    case "toggle-reminder": updateSettings({ reminderEnabled: !state.settings.reminderEnabled }); break;
+    case "toggle-reminder": toggleReminderSetting(); break;
     case "prev-month": prevMonth(); break;
     case "next-month": nextMonth(); break;
     case "set-range": setRange(id === "all" ? "all" : Number(id)); break;
@@ -750,7 +828,10 @@ document.getElementById("app").addEventListener("input", (e) => {
   if (e.target.id === "note-input") state.draftNote = e.target.value;
 });
 document.getElementById("app").addEventListener("change", (e) => {
-  if (e.target.id === "time-input") updateSettings({ reminderTime: e.target.value });
+  if (e.target.id === "time-input") {
+    updateSettings({ reminderTime: e.target.value });
+    checkAndSendReminder();
+  }
 });
 
 /* ---------- boot ---------- */
