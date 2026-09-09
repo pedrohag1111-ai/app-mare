@@ -62,8 +62,16 @@
 
   .action-row { display: flex; align-items: center; gap: 12px; }
   .btn-save { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 14px; border: none; cursor: pointer; }
-  .btn-delete { padding: 12px; border-radius: 12px; cursor: pointer; background: transparent; display: flex; align-items: center; justify-content: center; border-width: 1.5px; border-style: solid; }
   .storage-err { font-size: 12px; margin-top: 12px; color: #B8628F; }
+
+  /* Lista de Registros do Dia */
+  .day-logs-container { margin-top: 24px; }
+  .day-log-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; background: #fff; margin-bottom: 8px; border: 1.5px solid #EAE1D8; }
+  .day-log-info { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .day-log-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: 0.7; }
+  .day-log-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .btn-delete-log { background: transparent; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; opacity: 0.6; }
+  .btn-delete-log:hover { opacity: 1; }
 
   .settings-card { margin-top: 24px; border-radius: 16px; padding: 16px; background: #fff; border-width: 1.5px; border-style: solid; }
   .hormone-today-row { display: flex; align-items: center; justify-content: space-between; border-radius: 12px; padding: 10px 12px; margin-bottom: 16px; }
@@ -195,7 +203,7 @@ const ICONS = {
   bars: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>',
   chevronLeft: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   chevronRight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
-  trash: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
+  trash: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
   check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
   pill: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>',
 };
@@ -227,6 +235,25 @@ function dateKey(d){
 function startOfDay(d){ const c = new Date(d); c.setHours(0,0,0,0); return c; }
 function esc(s){ const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; }
 function currentThemeId(){ return state.draftIdentity && THEMES[state.draftIdentity] ? state.draftIdentity : "default"; }
+
+/* Helper para migrar e normalizar dados antigos para Array */
+function getNormalizedDayLogs(key) {
+  const data = state.entries[key];
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  return [data]; // Migra dado único antigo para formato de Array
+}
+
+/* Helper para gerar o CSS Background do Calendário/Ribbon */
+function getDayBackgroundCSS(logs) {
+  if (!logs || logs.length === 0) return "#FFFFFF";
+  if (logs.length === 1) return ident(logs[0].identity)?.color || "#FFFFFF";
+  
+  const colors = logs.map(l => ident(l.identity)?.color || "#FFFFFF");
+  const step = 100 / colors.length;
+  const stops = colors.map((c, idx) => `${c} ${idx * step}% ${(idx + 1) * step}%`).join(", ");
+  return `linear-gradient(135deg, ${stops})`;
+}
 
 /* ---------- persistence ---------- */
 function loadAll(){
@@ -285,11 +312,9 @@ function updateTheme(id){
 
 /* ---------- actions ---------- */
 function syncDraftFromSelected(){
-  const k = dateKey(state.selectedDate);
-  const existing = state.entries[k];
-  state.draftIdentity = existing ? existing.identity : null;
-  state.draftNote = existing ? (existing.note || "") : "";
-  state.draftHormone = existing ? !!existing.hormone : false;
+  state.draftIdentity = null;
+  state.draftNote = "";
+  state.draftHormone = false;
 }
 function selectDate(iso){
   state.selectedDate = startOfDay(new Date(iso));
@@ -308,21 +333,41 @@ function toggleIdentity(id){
 function saveEntry(){
   if (!state.draftIdentity) return;
   const k = dateKey(state.selectedDate);
-  state.entries[k] = { identity: state.draftIdentity, note: state.draftNote.trim(), hormone: !!state.draftHormone, ts: Date.now() };
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  const newLog = {
+    identity: state.draftIdentity,
+    note: state.draftNote.trim(),
+    hormone: !!state.draftHormone,
+    ts: Date.now(),
+    time: timeStr
+  };
+
+  let logs = getNormalizedDayLogs(k);
+  logs.push(newLog);
+  state.entries[k] = logs;
+
   persistEntries();
+  syncDraftFromSelected();
   state.savedFlash = true;
   render();
   setTimeout(() => { state.savedFlash = false; render(); }, 1400);
 }
-function deleteEntry(){
+
+function deleteLogItem(index){
   const k = dateKey(state.selectedDate);
-  if (!state.entries[k]) return;
-  delete state.entries[k];
+  let logs = getNormalizedDayLogs(k);
+  logs.splice(index, 1);
+  if (logs.length === 0) {
+    delete state.entries[k];
+  } else {
+    state.entries[k] = logs;
+  }
   persistEntries();
-  syncDraftFromSelected();
-  updateTheme(currentThemeId());
   render();
 }
+
 function resetAll(){ state.entries = {}; persistEntries(); state.confirmingReset = false; render(); }
 function updateSettings(patch){ Object.assign(state.settings, patch); persistSettings(); render(); }
 function prevMonth(){ state.calMonth--; if (state.calMonth < 0){ state.calMonth = 11; state.calYear--; } render(); }
@@ -363,11 +408,11 @@ function renderHeader(INK, INK_SOFT, PAPER_LINE){
   for (let i = 13; i >= 0; i--){
     const d = new Date(today); d.setDate(d.getDate() - i);
     const k = dateKey(d);
-    const entry = state.entries[k];
-    const info = entry ? ident(entry.identity) : null;
-    const bg = info ? info.color : "transparent";
-    const border = info ? (info.border ? `1.5px solid ${info.border}` : "none") : `1.5px dashed ${PAPER_LINE}`;
-    ribbon += `<button class="ribbon-dot" data-action="select-date" data-date="${d.toISOString()}" title="${d.getDate()}/${d.getMonth()+1}${info ? " · " + info.label : ""}" style="background:${bg};border:${border};"></button>`;
+    const logs = getNormalizedDayLogs(k);
+    const hasLogs = logs.length > 0;
+    const bg = getDayBackgroundCSS(logs);
+    const border = hasLogs ? "none" : `1.5px dashed ${PAPER_LINE}`;
+    ribbon += `<button class="ribbon-dot" data-action="select-date" data-date="${d.toISOString()}" title="${d.getDate()}/${d.getMonth()+1}" style="background:${bg};border:${border};"></button>`;
   }
   return `
     <header>
@@ -417,7 +462,7 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
     ${!isToday ? `<button class="back-today" data-action="go-today" style="color:${GOLD};border:1px solid ${GOLD};">voltar para hoje</button>` : ""}
   </div>`;
 
-  out += `<p class="hint" style="color:${INK_SOFT};">Como seu gênero se sentiu? <span style="opacity:.7;">(toque de novo para desmarcar)</span></p>`;
+  out += `<p class="hint" style="color:${INK_SOFT};">Adicionar registro de gênero agora:</p>`;
 
   out += '<div class="swatch-grid">';
   IDENTITIES.forEach(it => {
@@ -437,27 +482,45 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
   if (state.settings.usesHormones){
     const hOn = state.draftHormone;
     out += `<div class="hormone-today-row" style="background:#FFFFFF;border:1.5px solid ${DEFAULT_PAPER_LINE};">
-      <span style="font-size:13px;color:${DEFAULT_INK};display:flex;align-items:center;gap:6px;">${ICONS.pill} Usei hormônio hoje</span>
+      <span style="font-size:13px;color:${DEFAULT_INK};display:flex;align-items:center;gap:6px;">${ICONS.pill} Usei hormônio neste registro</span>
       <button class="toggle" data-action="toggle-hormone-today" style="background:${hOn ? DEFAULT_INK : DEFAULT_PAPER_LINE};" aria-label="Usei hormônio hoje">
         <span class="knob" style="left:${hOn ? "19px" : "2.5px"};"></span>
       </button>
     </div>`;
   }
 
-  out += `<p class="hint" style="font-size:14px;margin-bottom:8px;color:${INK_SOFT};">Alguma nota para o dia? <span style="opacity:.7;">(opcional)</span></p>`;
-  out += `<textarea id="note-input" rows="4" placeholder="Como foi, o que percebeu, o que ajudou..." style="border-color:${DEFAULT_PAPER_LINE};color:${DEFAULT_INK};">${esc(state.draftNote)}</textarea>`;
+  out += `<p class="hint" style="font-size:14px;margin-bottom:8px;color:${INK_SOFT};">Alguma nota? <span style="opacity:.7;">(opcional)</span></p>`;
+  out += `<textarea id="note-input" rows="3" placeholder="Como foi, o que percebeu..." style="border-color:${DEFAULT_PAPER_LINE};color:${DEFAULT_INK};">${esc(state.draftNote)}</textarea>`;
 
   const canSave = !!state.draftIdentity;
   const saveBg = canSave ? INK : DEFAULT_PAPER_LINE;
   const saveColor = canSave ? ON_INK : DEFAULT_INK_SOFT;
   out += `<div class="action-row">
     <button class="btn-save" data-action="save-entry" style="background:${saveBg};color:${saveColor};cursor:${canSave ? "pointer" : "not-allowed"};">
-      ${state.savedFlash ? ICONS.check + " Salvo" : "Salvar dia"}
-    </button>`;
-  if (state.entries[dateKey(state.selectedDate)]){
-    out += `<button class="btn-delete" data-action="delete-entry" style="border-color:${DEFAULT_PAPER_LINE};color:${DEFAULT_INK_SOFT};" aria-label="Apagar registro do dia">${ICONS.trash}</button>`;
+      ${state.savedFlash ? ICONS.check + " Salvo!" : "+ Adicionar registro"}
+    </button>
+  </div>`;
+
+  /* Lista de registros já feitos hoje */
+  const currentLogs = getNormalizedDayLogs(dateKey(state.selectedDate));
+  if (currentLogs.length > 0) {
+    out += `<div class="day-logs-container">
+      <p class="hint" style="color:${INK_SOFT};margin-top:20px;">Registros salvos nesta data (${currentLogs.length}):</p>`;
+    currentLogs.forEach((log, index) => {
+      const info = ident(log.identity);
+      out += `<div class="day-log-item" style="border-color:${DEFAULT_PAPER_LINE};">
+        <div class="day-log-info">
+          <span class="day-log-dot" style="background:${info ? info.color : "#ccc"};"></span>
+          <span style="font-weight:600;color:${DEFAULT_INK};">${info ? esc(info.label) : "Gênero"}</span>
+          ${log.time ? `<span class="day-log-time" style="color:${DEFAULT_INK_SOFT};">${log.time}</span>` : ''}
+          ${log.hormone ? `<span style="color:${GOLD};display:flex;">${ICONS.pill}</span>` : ''}
+          ${log.note ? `<span style="font-style:italic;color:${DEFAULT_INK_SOFT};">"${esc(log.note)}"` : ''}
+        </div>
+        <button class="btn-delete-log" data-action="delete-log-item" data-index="${index}" style="color:${DEFAULT_INK_SOFT};" title="Apagar este registro">${ICONS.trash}</button>
+      </div>`;
+    });
+    out += `</div>`;
   }
-  out += '</div>';
 
   if (state.storageError){
     out += `<p class="storage-err">Não consegui salvar agora. Tente novamente em instantes.</p>`;
@@ -509,12 +572,21 @@ function renderCalendario(INK_SOFT){
   for (let d = 1; d <= daysInMonth; d++){
     const date = new Date(state.calYear, state.calMonth, d);
     const k = dateKey(date);
-    const entry = state.entries[k];
-    const info = entry ? ident(entry.identity) : null;
+    const logs = getNormalizedDayLogs(k);
+    const hasLogs = logs.length > 0;
+    
     const isSel = dateKey(state.selectedDate) === k;
     const isTod = dateKey(today) === k;
-    const bg = info ? info.color : "#FFFFFF";
-    const color = info ? (info.textDark ? DEFAULT_INK : "#FFFFFF") : DEFAULT_INK_SOFT;
+    
+    const bg = getDayBackgroundCSS(logs);
+    
+    // Cor do texto
+    let color = DEFAULT_INK_SOFT;
+    if (hasLogs) {
+      const firstIdent = ident(logs[0].identity);
+      color = (logs.length === 1 && firstIdent && firstIdent.textDark) ? DEFAULT_INK : "#FFFFFF";
+    }
+
     let border;
     let boxShadow = "0 2px 4px rgba(0,0,0,0.03)";
 
@@ -523,17 +595,17 @@ function renderCalendario(INK_SOFT){
       boxShadow = "0 2px 8px rgba(0,0,0,0.12)";
     } else if (isTod) {
       border = `2px solid ${GOLD}`;
-    } else if (info && info.border) {
-      border = `1.5px solid ${info.border}`;
     } else {
       border = `1.5px solid ${DEFAULT_PAPER_LINE}`;
     }
 
-    const showHormoneBadge = state.settings.usesHormones && entry && entry.hormone;
+    const hasHormone = logs.some(l => l.hormone);
+    const showHormoneBadge = state.settings.usesHormones && hasHormone;
     const badgeIcon = '<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>';
     const badge = showHormoneBadge
       ? `<span style="position:absolute;top:-4px;right:-4px;width:15px;height:15px;border-radius:50%;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.25);pointer-events:none;color:${GOLD};z-index:2;">${badgeIcon}</span>`
       : "";
+
     cells += `<div class="cal-cell-wrapper">
       <button class="cal-cell" data-action="select-date" data-date="${date.toISOString()}" style="background:${bg};color:${color};border:${border};box-shadow:${boxShadow};">${d}</button>
       ${badge}
@@ -580,19 +652,30 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
 
   const today = startOfDay(new Date());
   const counts = { feminino: 0, agenero: 0, bigenero: 0, neutro: 0, masculino: 0 };
-  let total = 0;
+  let totalLogs = 0;
+  let totalDays = 0;
+
   Object.entries(state.entries).forEach(([k, v]) => {
     if (state.range !== "all"){
       const d = new Date(k + "T00:00:00");
       const diffDays = Math.round((today - d) / 86400000);
       if (diffDays < 0 || diffDays >= state.range) return;
     }
-    if (counts[v.identity] !== undefined){ counts[v.identity]++; total++; }
+    
+    const logs = getNormalizedDayLogs(k);
+    if (logs.length > 0) totalDays++;
+
+    logs.forEach(log => {
+      if (counts[log.identity] !== undefined){
+        counts[log.identity]++;
+        totalLogs++;
+      }
+    });
   });
 
   let out = `<section><div class="range-row">${chips}</div>`;
 
-  if (total === 0){
+  if (totalLogs === 0){
     out += `<div class="empty-state" style="border-color:${DEFAULT_PAPER_LINE};color:${DEFAULT_INK_SOFT};">
       Ainda não há registros nesse período. Volte para a aba "Hoje" e comece a anotar.
     </div>`;
@@ -600,7 +683,7 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
     const SEPARATOR = "rgba(255,255,255,0.75)";
     let bar = "";
     IDENTITIES.forEach(it => {
-      const pct = total ? (counts[it.id] / total) * 100 : 0;
+      const pct = totalLogs ? (counts[it.id] / totalLogs) * 100 : 0;
       if (pct === 0) return;
       bar += `<div style="width:${pct}%;background:${it.color};border-right:1px solid ${SEPARATOR};" title="${esc(it.label)}: ${Math.round(pct)}%"></div>`;
     });
@@ -609,7 +692,7 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
     let rows = "";
     IDENTITIES.forEach(it => {
       const count = counts[it.id];
-      const pct = total ? Math.round((count / total) * 100) : 0;
+      const pct = totalLogs ? Math.round((count / totalLogs) * 100) : 0;
       rows += `<div class="stat-row">
         <span class="stat-dot" style="background:${it.color};${it.border ? `border:1px solid ${it.border};` : ""}"></span>
         <span class="stat-label" style="color:${INK};">${esc(it.label)}</span>
@@ -620,7 +703,7 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
       </div>`;
     });
     out += rows;
-    out += `<p class="stat-total" style="color:${INK_SOFT};">${total} ${total === 1 ? "dia registrado" : "dias registrados"} no período.</p>`;
+    out += `<p class="stat-total" style="color:${INK_SOFT};">${totalLogs} registros em ${totalDays} ${totalDays === 1 ? "dia" : "dias"} no período.</p>`;
   }
 
   out += `<div class="reset-section" style="border-color:${DEFAULT_PAPER_LINE};">`;
@@ -644,13 +727,14 @@ document.getElementById("app").addEventListener("click", (e) => {
   const action = el.dataset.action;
   const id = el.dataset.id;
   const date = el.dataset.date;
+  const index = el.dataset.index;
   switch (action){
     case "select-date": selectDate(date); break;
     case "go-today": goToday(); break;
     case "set-tab": setTab(id); break;
     case "toggle-identity": toggleIdentity(id); break;
     case "save-entry": saveEntry(); break;
-    case "delete-entry": deleteEntry(); break;
+    case "delete-log-item": deleteLogItem(Number(index)); break;
     case "toggle-hormones": updateSettings({ usesHormones: !state.settings.usesHormones }); break;
     case "toggle-hormone-today": state.draftHormone = !state.draftHormone; render(); break;
     case "toggle-reminder": updateSettings({ reminderEnabled: !state.settings.reminderEnabled }); break;
