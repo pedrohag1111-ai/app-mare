@@ -1,7 +1,7 @@
 {
   "name": "Maré — Diário de Gênero",
   "short_name": "Maré",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#FAF6F1",
   "theme_color": "#FAF6F1",
@@ -25,12 +25,9 @@
   ],
   "id": "com.mare.diario",
   "description": "Um diário para acompanhar como seu gênero se sente, dia após dia",
-  "dir": "auto",
-  "lang": "pt",
-  "display_override": [
-    "window-controls-overlay",
-    "standalone"
-  ],
-  "orientation": "portrait",
-  "scope": "/"
+  "categories": [
+    "health",
+    "lifestyle",
+    "utilities"
+  ]
 }
