@@ -1,16 +1,26 @@
 {
   "name": "Maré — Diário de Gênero",
   "short_name": "Maré",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FAF6F1",
+  "theme_color": "#FAF6F1",
   "icons": [
     {
       "src": "logo-circular.svg",
-      "sizes": "512x512",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
-  ],
-  "start_url": "./index.html",
-  "background_color": "#FAF6F1",
-  "theme_color": "#FAF6F1",
-  "display": "standalone"
+  ]
 }
