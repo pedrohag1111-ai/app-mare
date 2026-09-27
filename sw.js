@@ -1,7 +1,11 @@
 const CACHE_NAME = 'mare-v1';
 const assetsToCache = [
+  './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './logo-circular.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -10,6 +14,11 @@ self.addEventListener('install', (event) => {
       return cache.addAll(assetsToCache);
     })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', (event) => {
