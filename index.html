@@ -130,15 +130,6 @@
   }
 </style>
 </head>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((reg) => console.log('Service Worker registrado com sucesso:', reg.scope))
-        .catch((err) => console.log('Falha ao registrar o Service Worker:', err));
-    });
-  }
-</script>
 
 <body>
 
@@ -151,6 +142,15 @@
 </div>
 
 <script>
+// REGISTO DO SERVICE WORKER
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then((reg) => console.log('Service Worker registrado com sucesso:', reg.scope))
+      .catch((err) => console.log('Falha ao registrar o Service Worker:', err));
+  });
+}
+
 // CONFIGURAÇÃO DO SUPABASE
 const SUPABASE_URL = 'https://txvzwzkpsdpmhkjtjjdb.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_poFGsBpFwEfAT9f0UVTD2A_pafHBRSp';
@@ -647,7 +647,7 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
       <p class="font-display date-num" style="color:${INK};">${state.selectedDate.getDate()}</p>
       <p class="weekday" style="color:${INK_SOFT};">${isToday ? "Hoje · " : ""}${esc(weekdayStr)}</p>
     </div>
-    ${!isToday ? `<button class="back-today" data-action="go-today" style="color:${GOLD};border:1px solid ${GOLD};">voltar para hoje</button>` : ""}
+    ${!isToday ? `<button class="back-today" data-action="go-today" style="color:${GOLD};border:1px solid${GOLD};">voltar para hoje</button>` : ""}
   </div>`;
 
   out += `<p class="hint" style="color:${INK_SOFT};">Adicionar registro de gênero agora:</p>`;
