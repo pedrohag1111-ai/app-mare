@@ -108,12 +108,15 @@
   .chip { font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 999px; cursor: pointer; border-width: 1px; border-style: solid; background: #fff; }
   .empty-state { border-radius: 16px; padding: 24px; text-align: center; font-size: 14px; border-width: 1.5px; border-style: dashed; background: #fff; }
   .spectrum-bar { height: 22px; border-radius: 999px; overflow: hidden; display: flex; margin-bottom: 24px; border-width: 1px; border-style: solid; }
-  .stat-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  
+  /* AJUSTE DAS ESTATÍSTICAS PARA EVITAR QUEBRA DE LINHA */
+  .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .stat-dot { width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0; }
-  .stat-label { font-size: 14px; width: 112px; flex-shrink: 0; }
-  .stat-track { flex: 1; height: 8px; border-radius: 999px; overflow: hidden; }
+  .stat-label { font-size: 13px; width: 105px; flex-shrink: 0; line-height: 1.2; }
+  .stat-track { flex: 1; height: 8px; border-radius: 999px; overflow: hidden; min-width: 40px; }
   .stat-fill { height: 100%; border-radius: 999px; }
-  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; width: 56px; text-align: right; flex-shrink: 0; }
+  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap; text-align: right; flex-shrink: 0; }
+  
   .stat-total { font-size: 12px; margin-top: 20px; }
   .reset-section { margin-top: 40px; padding-top: 20px; border-top-width: 1px; border-top-style: solid; }
   .reset-section button { background: none; border: none; cursor: pointer; font-size: 12px; }
@@ -781,7 +784,7 @@ function renderEstatisticas(INK, INK_SOFT, ON_INK){
         <div class="stat-track" style="background:${THEMES[themeState.displayId].surface};">
           <div class="stat-fill" style="width:${pct}%;background:${it.color};"></div>
         </div>
-        <span class="stat-value" style="color:${INK_SOFT};">${count} · ${pct}%</span>
+        <span class="stat-value" style="color:${INK_SOFT};">${count}&nbsp;·&nbsp;${pct}%</span>
       </div>`;
     });
     out += rows;
