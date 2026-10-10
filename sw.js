@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mare-v2'; // <--- Aumentamos para v2
+const CACHE_NAME = 'mare-v3';
 const assetsToCache = [
   './',
   './index.html',
@@ -19,7 +19,6 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    // Limpa a versão 'mare-v1' do telemóvel mantendo os dados salvos em localStorage
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
