@@ -109,7 +109,6 @@
   .empty-state { border-radius: 16px; padding: 24px; text-align: center; font-size: 14px; border-width: 1.5px; border-style: dashed; background: #fff; }
   .spectrum-bar { height: 22px; border-radius: 999px; overflow: hidden; display: flex; margin-bottom: 24px; border-width: 1px; border-style: solid; }
   
-  /* AJUSTE DAS ESTATÍSTICAS PARA EVITAR QUEBRA DE LINHA */
   .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .stat-dot { width: 10px; height: 10px; border-radius: 999px; flex-shrink: 0; }
   .stat-label { font-size: 13px; width: 105px; flex-shrink: 0; line-height: 1.2; }
@@ -142,7 +141,6 @@
 </div>
 
 <script>
-// REGISTO DO SERVICE WORKER
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
@@ -151,7 +149,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ARMAZENAMENTO LOCAL (Sem dependência de servidores)
 const storage = {
   get: (key) => Promise.resolve({ value: localStorage.getItem(key) }),
   set: (key, value) => Promise.resolve(localStorage.setItem(key, value)),
@@ -546,7 +543,7 @@ function renderHoje(INK, INK_SOFT, ON_INK, isToday, today){
       <p class="font-display date-num" style="color:${INK};">${state.selectedDate.getDate()}</p>
       <p class="weekday" style="color:${INK_SOFT};">${isToday ? "Hoje · " : ""}${esc(weekdayStr)}</p>
     </div>
-    ${!isToday ? `<button class="back-today" data-action="go-today" style="color:${GOLD};border:1px solid${GOLD};">voltar para hoje</button>` : ""}
+    ${!isToday ? `<button class="back-today" data-action="go-today" style="color:${GOLD};border:1px solid ${GOLD};">voltar para hoje</button>` : ""}
   </div>`;
 
   out += `<p class="hint" style="color:${INK_SOFT};">Adicionar registro de gênero agora:</p>`;
